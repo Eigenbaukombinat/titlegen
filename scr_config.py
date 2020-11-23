@@ -1,0 +1,7 @@
+#SIZE_X = 1920
+#SIZE_Y = 1080
+SIZE_X = 1280
+SIZE_Y = 720
+
+
+SIZE = (SIZE_X, SIZE_Y)
