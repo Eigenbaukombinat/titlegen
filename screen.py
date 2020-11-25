@@ -10,8 +10,6 @@ import time
 from scr_config import SIZE_X, SIZE_Y, SIZE
 
 
-
-
 pygame.mixer.init(44100, -16, 2, 512)
 pygame.init()
 FNT_ORB = pygame.font.Font('Orbitron-Black.otf', 80)
@@ -251,6 +249,8 @@ class Lower3rd(Text):
 
 
 class ImageAnimation(pygame.sprite.Sprite):
+    """Render a sequence of images as an animation in pixel style.
+    Does also extract frames from animated gifs."""
 
     frames = ()
     cur_frame = 0
@@ -327,6 +327,10 @@ class ImageAnimation(pygame.sprite.Sprite):
 
 
 class FlyingAnimation(ImageAnimation):
+    """Extend ImageAnimation: Animations flying from bottom to top
+    with slightly increased speed. This can not be toggled, started
+    sprites are running until they are out of sight. Configure max instances
+    with max_instances."""
 
     fly_start = SIZE_Y
     fly_end = 0
@@ -358,14 +362,14 @@ class FlyingAnimation(ImageAnimation):
         self.finished = False
         self.running = False
         self.reset_x()
+        self.rect.y = SIZE_Y
 
     def update(self):
-        self.running = True
         super().update()
+        self.running = True
         self.fly_speed += 0.06
         self.fly_pos -= int(self.fly_speed)
         if self.fly_pos <= self.fly_end:
-            self.remove()
             self.finished = True
         else:
             self.rect.y = self.fly_pos
@@ -376,7 +380,8 @@ class FlyingAnimation(ImageAnimation):
 class TGen(object):
 
     def __init__(self):
-        self.screen = pygame.display.set_mode(SIZE)#, pygame.FULLSCREEN)
+        flags = pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.FULLSCREEN
+        self.screen = pygame.display.set_mode(SIZE)
         pygame.mouse.set_visible(False)
         pygame.display.set_caption('rc3 title generator output')
         self.all_sprites = pygame.sprite.Group()
@@ -492,8 +497,8 @@ class TGen(object):
             for name, cache in multi_cache.items():
                 for spr in cache:
                     if spr.finished:
-                        self.all_sprites.remove(spr)
                         spr.reset_pos()
+                        self.all_sprites.remove(spr)
 
             self.clear()
             self.all_sprites.update()
