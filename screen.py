@@ -258,36 +258,43 @@ class ImageAnimation(pygame.sprite.Sprite):
     pos = 0
     color = GREEN
 
-    def get_images(self, fns):
+    def get_images(self, fns, mode='L'):
         result = []
         for fn in fns:
             imageObject = Image.open(fn)
             if hasattr(imageObject, 'is_animated') and imageObject.is_animated:
                 for frame in range(0,imageObject.n_frames):
                     imageObject.seek(frame)
-                    result.append(imageObject.copy().convert('L'))
+                    result.append(imageObject.copy().convert(mode))
             else:
-                result.append(imageObject.convert('L'))
+                result.append(imageObject.convert(mode))
         return result
 
 
-    def __init__(self, fns, color=GREEN, speed=10, mono=False, scale=1, fit_to_screen=False, ani_speed=10, **align_kw):
+    def __init__(self, fns, effect=True, color=GREEN, speed=10, mono=False, scale=1, fit_to_screen=False, ani_speed=10, **align_kw):
         self.mono = mono
         self.color = color
         self.align_kw = align_kw
         self.speed = ani_speed
-        imgs = self.get_images(fns)
+        if effect:
+            #convert to grayscale
+            mode = 'L'
+        else:
+            mode = 'RGBA'
+        imgs = self.get_images(fns, mode)
         for img in imgs:
             if scale != 1:
                 w, h = img.size
                 img = img.resize((int(w * scale), int(h * scale)))
             if fit_to_screen and img.size != SIZE:
                 img = img.resize(SIZE)
-            target = self.render_image(img)
+            if effect:
+                target = self.render_image(img)
+            else:
+                target = pygame.image.fromstring(
+                        img.tobytes(), img.size, img.mode)
             rect = target.get_rect()
-            #rect = img.get_rect()
             self.frames += ((target, rect),)
-            #self.frames += ((img, rect),)
         self.image = target
         self.rect = rect
         self.cur_frame = 1
@@ -341,8 +348,8 @@ class FlyingAnimation(ImageAnimation):
     finished = False
     running = False
 
-    def __init__(self, *args, random_x_pos=True,fly_speed=3, **kw):
-        super().__init__(*args, **kw)
+    def __init__(self, *args, effect=True, random_x_pos=True,fly_speed=3, **kw):
+        super().__init__(*args, effect=effect, **kw)
         self.fly_end = 0 - self.image.get_size()[1]
         self.fly_speed = self.fly_speed_reset = fly_speed
         self.random_x_pos = random_x_pos
@@ -371,8 +378,8 @@ class FlyingAnimation(ImageAnimation):
         self.fly_pos -= int(self.fly_speed)
         if self.fly_pos <= self.fly_end:
             self.finished = True
-        else:
-            self.rect.y = self.fly_pos
+
+        self.rect.y = self.fly_pos
         self.rect.x = self.x_pos
 
 
@@ -436,14 +443,18 @@ class TGen(object):
 
         multi_registry = dict(
             gif=(FlyingAnimation, (['images/herz.gif'],), dict(ani_speed=1, fly_speed=3, scale=0.6, color=THEME1[0])),
+            grrr=(FlyingAnimation, (['images/angry.gif'],), dict(effect=False, ani_speed=5, fly_speed=2, scale=1.2)),
+            img=(FlyingAnimation, (['images/chaoszone_logo.png'],), dict(effect=False, ani_speed=1, fly_speed=2, scale=0.7)),
         )
 
         multi_keys = {
             K_g: 'gif',
+            K_h: 'grrr',
+            K_j: 'img',
         }
 
-        multi_cache = dict(gif=[])
-        multi_running = dict(gif=[])
+        multi_cache = dict(gif=[], grrr=[], img=[])
+        multi_running = dict(gif=[], grrr=[], img=[])
 
         # "multi" dinger pre-rendern
         for name, spr in multi_registry.items():
