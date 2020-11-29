@@ -387,8 +387,8 @@ class FlyingAnimation(ImageAnimation):
 class TGen(object):
 
     def __init__(self):
-        flags = pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.FULLSCREEN
-        self.screen = pygame.display.set_mode(SIZE)
+        flags = pygame.HWSURFACE|pygame.DOUBLEBUF
+        self.screen = pygame.display.set_mode(SIZE, flags)
         pygame.mouse.set_visible(False)
         pygame.display.set_caption('rc3 title generator output')
         self.all_sprites = pygame.sprite.Group()
@@ -462,7 +462,6 @@ class TGen(object):
             for x in range(klass.max_instances):
                 multi_cache[name].append(klass(*args, **kw))
 
-
         while True:
             for event in pygame.event.get():
                 if event.type == QUIT:
@@ -514,7 +513,7 @@ class TGen(object):
             self.clear()
             self.all_sprites.update()
             self.all_sprites.draw(self.screen)
-            self.clock.tick(60)
+            self.clock.tick(30)
             pygame.display.flip()
 
 if __name__ == '__main__':
