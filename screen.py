@@ -1,13 +1,15 @@
 import pygame
+import pygame.midi
 from pygame.locals import *
-from utils import align_rect
+from utils import align_rect, print_midi_device_info
 
 from PIL import GifImagePlugin
 import random
 from PIL import Image
 import time
 
-from scr_config import SIZE_X, SIZE_Y, SIZE
+from scr_config import SIZE_X, SIZE_Y, SIZE, MIDI_IN_DEVICE_ID, MIDI_OUT_DEVICE_ID
+
 
 
 pygame.mixer.init(44100, -16, 2, 512)
@@ -383,6 +385,60 @@ class FlyingAnimation(ImageAnimation):
         self.rect.x = self.x_pos
 
 
+class SlidingAnimation(ImageAnimation):
+    """Extend ImageAnimation: Animations flying from side to side.
+    This can not be toggled, started
+    sprites are running until they are out of sight. Configure max instances
+    with max_instances."""
+
+    fly_start = SIZE_X
+    fly_end = 0
+    fly_pos = SIZE_X
+    fly_speed = 5
+    max_instances = 10
+    y_pos = 0
+    finished = False
+    running = False
+
+    def __init__(self, *args, direction=1, effect=True, random_fly_speed=3, random_y_pos=True,fly_speed=3, **kw):
+        super().__init__(*args, effect=effect, **kw)
+        if direction == 1:
+            self.fly_end = 0 - self.image.get_size()[0]
+        else:
+            self.fly_end = SIZE_X + self.image.get_size()[0]
+        self.fly_speed = self.fly_speed_reset = fly_speed + random.randint(0,random_fly_speed)
+        self.fly_speed_reset = self.fly_speed
+        self.random_y_pos = random_y_pos
+        self.reset_y()
+
+    def reset_y(self):
+        if self.random_y_pos:
+            # this does not work, surface is always fullscreen. :(
+            max_y = SIZE_Y-self.image.get_size()[1]
+            # meh
+            max_y = SIZE_Y - 100
+            self.y_pos = random.randint(0, max_y)
+
+    def reset_pos(self):
+        self.fly_pos = SIZE_X
+        self.fly_speed = self.fly_speed_reset
+        self.finished = False
+        self.running = False
+        self.reset_y()
+        self.rect.x = SIZE_X
+
+    def update(self):
+        super().update()
+        self.running = True
+        self.fly_pos -= int(self.fly_speed)
+        if self.fly_pos <= self.fly_end:
+            self.finished = True
+
+        self.rect.x = self.fly_pos
+        self.rect.y = self.y_pos
+
+
+
 
 class TGen(object):
 
@@ -393,6 +449,10 @@ class TGen(object):
         pygame.display.set_caption('rc3 title generator output')
         self.all_sprites = pygame.sprite.Group()
         self.clock = clock = pygame.time.Clock()
+        pygame.midi.init()
+        print_midi_device_info()
+        self.midi_in = pygame.midi.Input(MIDI_IN_DEVICE_ID)
+        self.midi_out = pygame.midi.Output(MIDI_OUT_DEVICE_ID)
         self.clear()
 
     def clear(self):
@@ -408,6 +468,13 @@ class TGen(object):
     def render_text(self, text, font=FNT_MNT, **align_kw):
         txt = self.get_text_surface(text, font)
         self.show_text(txt, font, **align_kw)
+
+
+    def quit(self):
+        #clean up
+        del self.midi_in
+        del self.midi_out
+        pygame.midi.quit()
 
 
     def main(self):
@@ -441,20 +508,34 @@ class TGen(object):
             K_p: 'ph',
         }
 
+        midi = {
+                28: 't2',
+                24: 'bb',
+        }
+        name_midi = {
+                't2': 28,
+                'bb': 24,
+        }
+        midi_multi = {
+                31: 'cw',
+        }
+
         multi_registry = dict(
             gif=(FlyingAnimation, (['images/herz.gif'],), dict(ani_speed=1, fly_speed=3, scale=0.6, color=THEME1[0])),
             grrr=(FlyingAnimation, (['images/angry.gif'],), dict(effect=False, ani_speed=5, fly_speed=2, scale=1.2)),
             img=(FlyingAnimation, (['images/chaoszone_logo.png'],), dict(effect=False, ani_speed=1, fly_speed=2, scale=0.7)),
+            cw=(SlidingAnimation, (['images/cyberwehr.gif'],), dict(effect=False, ani_speed=4, fly_speed=2, scale=1)),
         )
 
         multi_keys = {
             K_g: 'gif',
             K_h: 'grrr',
             K_j: 'img',
+            K_k: 'cw',
         }
 
-        multi_cache = dict(gif=[], grrr=[], img=[])
-        multi_running = dict(gif=[], grrr=[], img=[])
+        multi_cache = dict(gif=[], grrr=[], img=[], cw=[])
+        multi_running = dict(gif=[], grrr=[], img=[], cw=[])
 
         # "multi" dinger pre-rendern
         for name, spr in multi_registry.items():
@@ -465,50 +546,82 @@ class TGen(object):
         while True:
             for event in pygame.event.get():
                 if event.type == QUIT:
+                    self.quit()
                     return
-                if event.type == KEYDOWN:
-                    if event.key == K_q:
-                        return
-                    if event.key in keys:
-                        # dinge ein und ausblenden
-                        name = keys.get(event.key)
-                        sprite = registry.get(name)
-                        if sprite in self.all_sprites:
-                            self.all_sprites.remove(sprite)
-                        else:
-                            sprite.reset_pos()
-                            self.all_sprites.add(sprite)
-                    if event.key in multi_keys:
-                        # dinge einblenden die von selbst wieder verschwinden
-                        name = multi_keys.get(event.key)
-                        cached_sprites = multi_cache.get(name)
+                if event.type in [pygame.midi.MIDIIN, KEYDOWN]:
+                    name_single = None
+                    name_multi = None
+                    if event.type == pygame.midi.MIDIIN:
+                        if event.status == 144:
+                            #note on
+                            print(event.data1)
+                            if event.data1 in midi:
+                                name_single = midi.get(event.data1)
+                            if event.data1 in midi_multi:
+                                name_multi = midi_multi.get(event.data1)
+                    else:
+                        if event.key == K_q:
+                            self.quit()
+                            return
+                        if event.key in keys:
+                            # dinge ein und ausblenden
+                            name_single = keys.get(event.key)
+
+                        if event.key in multi_keys:
+                            # dinge einblenden die von selbst wieder verschwinden
+                            name_multi = multi_keys.get(event.key)
+
+                        if event.key == K_k:
+                            senderlogo.remove_haufen()
+                            senderlogo.add_haufen(DEFAULT_HAUFEN, PURPLE)
+                        if event.key == K_l:
+                            senderlogo.remove_haufen()
+                            senderlogo.add_haufen(HAUFEN_TV_1, TURQUOISE)
+                            senderlogo.add_haufen(HAUFEN_TV_2, TURQUOISE)
+                            senderlogo.add_haufen(HAUFEN_TV_3, TURQUOISE)
+                        if event.key == K_j:
+                            senderlogo.remove_haufen()
+                            senderlogo.add_haufen(HAUFEN_ALPAKA, BLUE)
+                        if event.key == K_h:
+                            senderlogo.remove_haufen()
+                            senderlogo.add_haufen(HAUFEN_CHAOSZONE, PURPLE)
+                    if name_multi is not None:
+                        cached_sprites = multi_cache.get(name_multi)
                         found = False
                         for spr in cached_sprites:
                             if not spr.running:
                                 found = True
                                 break
                         if found:
+                            spr.name = name_multi
                             self.all_sprites.add(spr)
+                    if name_single is not None:
+                        sprite = registry.get(name_single)
+                        if sprite in self.all_sprites:
+                            self.all_sprites.remove(sprite)
+                        else:
+                            sprite.reset_pos()
+                            sprite.name = name_single
+                            self.all_sprites.add(sprite)
 
-                    if event.key == K_k:
-                        senderlogo.remove_haufen()
-                        senderlogo.add_haufen(DEFAULT_HAUFEN, PURPLE)
-                    if event.key == K_l:
-                        senderlogo.remove_haufen()
-                        senderlogo.add_haufen(HAUFEN_TV_1, TURQUOISE)
-                        senderlogo.add_haufen(HAUFEN_TV_2, TURQUOISE)
-                        senderlogo.add_haufen(HAUFEN_TV_3, TURQUOISE)
-                    if event.key == K_j:
-                        senderlogo.remove_haufen()
-                        senderlogo.add_haufen(HAUFEN_ALPAKA, BLUE)
-                    if event.key == K_h:
-                        senderlogo.remove_haufen()
-                        senderlogo.add_haufen(HAUFEN_CHAOSZONE, PURPLE)
+            for spr in self.all_sprites:
+                midinote = name_midi.get(spr.name)
+                if midinote is not None:
+                    self.midi_out.note_on(midinote, 127)
+            #remove finished animations
             for name, cache in multi_cache.items():
                 for spr in cache:
                     if spr.finished:
                         spr.reset_pos()
                         self.all_sprites.remove(spr)
+            #poll midi events
+            if self.midi_in.poll():
+                midi_events = self.midi_in.read(10)
+                # convert them into pygame events.
+                midi_evs = pygame.midi.midis2events(midi_events, self.midi_in.device_id)
+                for midi_e in midi_evs:
+                    pygame.event.post(midi_e)
+
 
             self.clear()
             self.all_sprites.update()
