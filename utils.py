@@ -1,4 +1,5 @@
 from scr_config import SIZE_X, SIZE_Y
+import pygame.midi
 
 def align_rect(rect_size, x=0, y=0, halign=None, valign=None, margin=0, fit_to_screen=False):
     if fit_to_screen:
@@ -21,3 +22,12 @@ def align_rect(rect_size, x=0, y=0, halign=None, valign=None, margin=0, fit_to_s
     if halign == 'right' or valign == 'bottom' or halign == 'center':
         margin = 0
     return x, y, margin
+
+
+def print_midi_device_info():
+    for i in range(pygame.midi.get_count()):
+        r = pygame.midi.get_device_info(i)
+        interf, name, input, output, opened = r
+        name = str(name)
+        interf = str(interf)
+        print(f"{i}: {name} {input and 'IN' or ''}{output and 'OUT' or ''} ({interf})")
