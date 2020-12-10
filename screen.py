@@ -10,6 +10,7 @@ import time
 
 from scr_config import SIZE_X, SIZE_Y, SIZE, MIDI_IN_DEVICE_ID, MIDI_OUT_DEVICE_ID
 
+OBSEVENT = USEREVENT + 1
 
 
 pygame.mixer.init(44100, -16, 2, 512)
@@ -438,26 +439,48 @@ class SlidingAnimation(ImageAnimation):
         self.rect.y = self.y_pos
 
 
+from obswebsocket import obsws, events  # noqa: E402
 
 
 class TGen(object):
 
     def __init__(self):
+        flags = pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.NOFRAME
+        flags = pygame.DOUBLEBUF|pygame.NOFRAME
         flags = pygame.HWSURFACE|pygame.DOUBLEBUF
+        #flags = pygame.OPENGL
         self.screen = pygame.display.set_mode(SIZE, flags)
+        #self.screen = pygame.display.set_mode(SIZE)
+        self.screen.set_alpha(60)
         pygame.mouse.set_visible(False)
         pygame.display.set_caption('rc3 title generator output')
         self.all_sprites = pygame.sprite.Group()
         self.clock = clock = pygame.time.Clock()
         pygame.midi.init()
         print_midi_device_info()
+
+        host = "ratte"
+        port = 4444
+        password = ""
+
+
+
+        ws = obsws(host, port, password)
+        ws.register(self.on_obs_switch, events.SwitchScenes)
+        ws.connect()
         self.midi_in = pygame.midi.Input(MIDI_IN_DEVICE_ID)
         self.midi_out = pygame.midi.Output(MIDI_OUT_DEVICE_ID)
         self.clear()
 
+    def on_obs_switch(self, message):
+        obs_event = pygame.event.Event(OBSEVENT, message=message)
+        pygame.event.post(obs_event)
+        print(u"OBS Scenechange to {}".format(message.getSceneName()))
+    
     def clear(self):
+        pass
         # clear the screen
-        pygame.draw.rect(self.screen, (0,0,0), (0,0,1920,1080))
+        pygame.draw.rect(self.screen, (0,0,0,0), (0,0,1920,1080))
 
     def show_text(self, txt, font=FNT_MNT, **align_kw):
         """print text with given font on the given position"""
@@ -523,7 +546,7 @@ class TGen(object):
         multi_registry = dict(
             gif=(FlyingAnimation, (['images/herz.gif'],), dict(ani_speed=1, fly_speed=3, scale=0.6, color=THEME1[0])),
             grrr=(FlyingAnimation, (['images/angry.gif'],), dict(effect=False, ani_speed=5, fly_speed=2, scale=1.2)),
-            img=(FlyingAnimation, (['images/chaoszone_logo.png'],), dict(effect=False, ani_speed=1, fly_speed=2, scale=0.7)),
+            img=(FlyingAnimation, (['images/chaoszone_logo.gif'],), dict(effect=False, ani_speed=2, fly_speed=2, scale=1)),
             cw=(SlidingAnimation, (['images/cyberwehr.gif'],), dict(effect=False, ani_speed=4, fly_speed=2, scale=1)),
         )
 
@@ -548,10 +571,16 @@ class TGen(object):
                 if event.type == QUIT:
                     self.quit()
                     return
-                if event.type in [pygame.midi.MIDIIN, KEYDOWN]:
+                if event.type in [pygame.midi.MIDIIN, KEYDOWN, OBSEVENT]:
                     name_single = None
                     name_multi = None
-                    if event.type == pygame.midi.MIDIIN:
+                    if event.type == OBSEVENT:
+                        for source in event.message.getSources():
+                            x = source['x']
+                            y = source['y']
+                            w = source['cx']
+                            h = source['cy']
+                    elif event.type == pygame.midi.MIDIIN:
                         if event.status == 144:
                             #note on
                             print(event.data1)
