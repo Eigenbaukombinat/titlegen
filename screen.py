@@ -24,6 +24,7 @@ FNT_MNT = pygame.font.Font('Montserrat-Regular.otf', 40)
 
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
+BLACK = (0,0,0)
 
 # primary colors gradations
 PURPLE = [(178, 57, 255), (103, 2, 149), (68, 9, 105), (36, 0, 56)]
@@ -97,6 +98,19 @@ HAUFEN_CHAOSZONE = [
 '    ## ',
 ]
 
+def scale_fhd_to_res(size):
+    x, y = size
+    return int((x / 1920.0) * SIZE_X), int((y / 1080.0) * SIZE_Y)
+
+def scale_res_to_fhd(self):
+    x, y = size
+    return int((x / float(SIZE_X)) * 1920), int((y / (float(SIZE_Y)) * 1080.0))
+
+def scale_fhd_to_res_x(x):
+    return int((x / 1920.0) * SIZE_X)
+
+def scale_res_to_fhd_x(x):
+    return int((x / float(SIZE_X)) * 1920)
 
 def render_pixelhaufen(width, height, alpha, haufen, color, x=0, y=0, margin=0):
     target = pygame.Surface(SIZE, pygame.SRCALPHA)
@@ -116,6 +130,106 @@ def render_pixelhaufen(width, height, alpha, haufen, color, x=0, y=0, margin=0):
 
     pygame.draw.rect(target, WHITE, (x+margin+pixel_size-(pixel_size/3), y+margin, hx-hx_init-pixel_size+(pixel_size/2), hy-hy_init), 2)
     return target
+
+def get_text_surface(text, color, font=FNT_MNT):
+    txt = font.render(text, True, color)
+    size = txt.get_size()
+    size = SIZE
+    alpha_img = pygame.Surface(SIZE, pygame.SRCALPHA)
+    alpha_img.fill((255, 255, 255, 255))
+    txt.blit(alpha_img, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return txt
+
+def get_images(fns, mode='L'):
+    result = []
+    for fn in fns:
+        imageObject = Image.open(fn)
+        if hasattr(imageObject, 'is_animated') and imageObject.is_animated:
+            for frame in range(0,imageObject.n_frames):
+                imageObject.seek(frame)
+                result.append(imageObject.copy().convert(mode))
+        else:
+            result.append(imageObject.convert(mode))
+    return result
+
+class SpeakerName(pygame.sprite.Sprite):
+
+
+    def _create(self):
+        with open(self.fn, 'r') as infile:
+            self.text = infile.read().strip()
+
+        self.text_surface = get_text_surface(self.text, self.color, self.font)
+        self.text_width = self.text_surface.get_size()[0]
+        if self.imgs is not None:
+            for img in get_images(self.imgs, 'RGBA'):
+                target = pygame.Surface(SIZE, pygame.SRCALPHA)
+                pgimage = pygame.image.fromstring(
+                        img.tobytes(), img.size, img.mode)
+                target.blit(pgimage, (0,0))#(self.pos_x, self.pos_y))
+                self.frames += ((target, target.get_rect()),)
+        self.img_width, self.img_height = img.size
+        self.reset_pos()
+        self.created = True
+
+    def __init__(self, pos_x, pos_y, fn, rtl=True, imgs=None, margin_x=0, margin_y=0, font=FNT_ORB_30, color=WHITE):
+        super().__init__()
+        self.pos = self.speed = 4
+        self.cur_frame = 0
+        self.imgs = imgs
+        self.margin_x = margin_x
+        self.margin_y = margin_y
+        self.pos_x, self.pos_y = scale_fhd_to_res((int(pos_x), int(pos_y)))
+        self.rtl = rtl
+        self.created = False
+        self.text = ''
+        self.fn = fn
+        self.font = font
+        self.color = color
+        self.frames = []
+        self._create()
+
+    def reset_pos(self):
+        self.cur_frame = 0
+        self.pos = self.speed
+        if self.rtl:
+            self.start_pos_x = SIZE_X
+            self.end_pos_x = self.pos_x
+            self.fly_dir = -10
+            self.current_x = self.start_pos_x
+        else:
+            self.start_pos_x = 0
+            self.end_pos_x = self.pos_x
+            self.fly_dir = 10
+            self.current_x = 0
+
+    def update(self):
+        if self.current_x > self.end_pos_x:
+            #only works for rtl!
+            self.current_x = self.current_x + self.fly_dir
+            if self.pos == self.speed:
+                self.remove()
+                if self.cur_frame >= len(self.frames):
+                    self.cur_frame = 0
+                image_surface = self.frames[self.cur_frame][0]
+                self.cur_frame += 1
+                self.pos = 0
+                #text.blit(image_surface, (self.pos_x, self.pos_y))
+                image_surface.blit(self.text_surface, (self.margin_x,self.margin_y))#(self.pos_x, self.pos_y))
+                #text.blit(image_surface, (self.pos_x, self.pos_y))
+                self.image = image_surface
+                self.rect = self.image.get_rect()
+                self.rect.x = self.current_x
+                self.rect.y = self.pos_y
+                print((self.current_x, self.end_pos_x, self.rect.x, self.rect.y))
+        else:
+            self._create()
+        self.pos += 1
+
+
+
+class TalkTitle(pygame.sprite.Sprite):
+    pass
 
 
 
@@ -148,7 +262,6 @@ class Pixelhaufen(pygame.sprite.Sprite):
 
 
 
-
 class Text(pygame.sprite.Sprite):
 
     txt_color = GREEN
@@ -167,11 +280,7 @@ class Text(pygame.sprite.Sprite):
         self.reset_pos()
 
     def get_text_surface(self, text, font=FNT_MNT):
-        txt = font.render(text, True, self.txt_color)
-        alpha_img = pygame.Surface(txt.get_size(), pygame.SRCALPHA)
-        alpha_img.fill((255, 255, 255, 255))
-        txt.blit(alpha_img, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-        return txt
+        return get_text_surface(text, self.txt_color, font)
 
 
 
@@ -261,19 +370,6 @@ class ImageAnimation(pygame.sprite.Sprite):
     pos = 0
     color = GREEN
 
-    def get_images(self, fns, mode='L'):
-        result = []
-        for fn in fns:
-            imageObject = Image.open(fn)
-            if hasattr(imageObject, 'is_animated') and imageObject.is_animated:
-                for frame in range(0,imageObject.n_frames):
-                    imageObject.seek(frame)
-                    result.append(imageObject.copy().convert(mode))
-            else:
-                result.append(imageObject.convert(mode))
-        return result
-
-
     def __init__(self, fns, effect=True, color=GREEN, speed=10, mono=False, scale=1, fit_to_screen=False, ani_speed=10, **align_kw):
         self.mono = mono
         self.color = color
@@ -284,7 +380,7 @@ class ImageAnimation(pygame.sprite.Sprite):
             mode = 'L'
         else:
             mode = 'RGBA'
-        imgs = self.get_images(fns, mode)
+        imgs = get_images(fns, mode)
         for img in imgs:
             if scale != 1:
                 w, h = img.size
@@ -480,7 +576,7 @@ class TGen(object):
     def clear(self):
         pass
         # clear the screen
-        pygame.draw.rect(self.screen, (0,0,0,0), (0,0,1920,1080))
+        pygame.draw.rect(self.screen, (0,0,255), (0,0,SIZE_X,SIZE_Y))
 
     def show_text(self, txt, font=FNT_MNT, **align_kw):
         """print text with given font on the given position"""
@@ -510,12 +606,30 @@ class TGen(object):
             ph3=ImageAnimation(['images/pesthoernchen.jpg'], halign='right', valign="bottom", margin=40),
             ph4=ImageAnimation(['images/pesthoernchen.jpg'], halign='center',  margin=40),
             chaoszone=ImageAnimation(['images/chaoszone.png'], halign='center',  valign="middle"),
-            winkekatze=ImageAnimation(['images/winkekatze.png','images/winkekatze2.png'], halign='center',  valign="middle"),
+            #winkekatze=ImageAnimation(['images/winkekatze.png','images/winkekatze2.png'], halign='center',  valign="middle"),
             bb=Lower3rd('Hallo ballo', color=BLUE[0]),
             bb2=Lower3rd('Hallo ballo blabla blubberdiblubb'),
             # t2=TextWithHaufen('Blubb', x=0, y=0),
             t2=senderlogo,
             ph=Pixelhaufen(size=100, x=SIZE_X-400, y=40, color=TURQUOISE),
+            sn=SpeakerName(1356,364+280, "speaker1.txt", imgs=['images/cyberwehr_1356_rtl.gif'], margin_y=2, margin_x=49,
+                font=FNT_ORB_40, color=BLACK),
+        )
+
+        # registry for sprites which can be instanciated and invoked/deactivated via rest api
+        web_registry = dict(
+            speakername=dict(
+                klass=SpeakerName,
+                params={
+                    'pos_x': 'int',
+                    'pos_y': 'int',
+                    'text': 'str'},
+            ),
+            talktitle=dict(
+                klass=TalkTitle,
+                params={
+                    'title': 'str'},
+            ),
         )
 
         keys = {
@@ -525,10 +639,11 @@ class TGen(object):
             K_f: 'ph3',
             K_r: 'bb',
             K_t: 'bb2',
-            K_w: 'winkekatze',
+            #K_w: 'winkekatze',
             K_c: 'chaoszone',
             K_b: 't2',
             K_p: 'ph',
+            K_v: 'sn',
         }
 
         midi = {
@@ -544,17 +659,17 @@ class TGen(object):
         }
 
         multi_registry = dict(
-            gif=(FlyingAnimation, (['images/herz.gif'],), dict(ani_speed=1, fly_speed=3, scale=0.6, color=THEME1[0])),
-            grrr=(FlyingAnimation, (['images/angry.gif'],), dict(effect=False, ani_speed=5, fly_speed=2, scale=1.2)),
-            img=(FlyingAnimation, (['images/chaoszone_logo.gif'],), dict(effect=False, ani_speed=2, fly_speed=2, scale=1)),
-            cw=(SlidingAnimation, (['images/cyberwehr.gif'],), dict(effect=False, ani_speed=4, fly_speed=2, scale=1)),
+            #gif=(FlyingAnimation, (['images/herz.gif'],), dict(ani_speed=1, fly_speed=3, scale=0.6, color=THEME1[0])),
+            #grrr=(FlyingAnimation, (['images/angry.gif'],), dict(effect=False, ani_speed=5, fly_speed=2, scale=1.2)),
+            #img=(FlyingAnimation, (['images/chaoszone_logo.gif'],), dict(effect=False, ani_speed=2, fly_speed=2, scale=1)),
+            #cw=(SlidingAnimation, (['images/cyberwehr.gif'],), dict(effect=False, ani_speed=4, fly_speed=2, scale=1)),
         )
 
         multi_keys = {
-            K_g: 'gif',
-            K_h: 'grrr',
-            K_j: 'img',
-            K_k: 'cw',
+            #K_g: 'gif',
+            #K_h: 'grrr',
+            #K_j: 'img',
+            #K_k: 'cw',
         }
 
         multi_cache = dict(gif=[], grrr=[], img=[], cw=[])
@@ -627,6 +742,7 @@ class TGen(object):
                     if name_single is not None:
                         sprite = registry.get(name_single)
                         if sprite in self.all_sprites:
+                            sprite.kill()
                             self.all_sprites.remove(sprite)
                         else:
                             sprite.reset_pos()
@@ -655,7 +771,7 @@ class TGen(object):
             self.clear()
             self.all_sprites.update()
             self.all_sprites.draw(self.screen)
-            self.clock.tick(30)
+            self.clock.tick(25)
             pygame.display.flip()
 
 if __name__ == '__main__':
