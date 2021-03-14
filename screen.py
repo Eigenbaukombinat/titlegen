@@ -557,7 +557,7 @@ class TGen(object):
 
         host = "ratte"
         port = 4444
-        password = ""
+        password = "Banane3000"
 
 
 
@@ -572,11 +572,11 @@ class TGen(object):
         obs_event = pygame.event.Event(OBSEVENT, message=message)
         pygame.event.post(obs_event)
         print(u"OBS Scenechange to {}".format(message.getSceneName()))
-    
+
     def clear(self):
         pass
-        # clear the screen
-        pygame.draw.rect(self.screen, (0,0,255), (0,0,SIZE_X,SIZE_Y))
+    # clear the screen
+        pygame.draw.rect(self.screen, (0,0,0), (0,0,SIZE_X,SIZE_Y))
 
     def show_text(self, txt, font=FNT_MNT, **align_kw):
         """print text with given font on the given position"""
@@ -600,77 +600,77 @@ class TGen(object):
         senderlogo = TextWithHaufen('CZTV', haufen_spec=HAUFEN_TV, halign='left', valign='top', margin=10, font=FNT_ORB_20, txt_color=WHITE)
         #senderlogo.add_haufen(DEFAULT_HAUFEN)
         registry = dict(
-            merkel=ImageAnimation(['images/cyber.jpg'], fit_to_screen=True, color=TURQUOISE[1]),
-            ph1=ImageAnimation(['images/pesthoernchen.jpg'], halign='center', color=PURPLE[0]),
-            ph2=ImageAnimation(['images/pesthoernchen.jpg'], halign='right'),
-            ph3=ImageAnimation(['images/pesthoernchen.jpg'], halign='right', valign="bottom", margin=40),
-            ph4=ImageAnimation(['images/pesthoernchen.jpg'], halign='center',  margin=40),
-            chaoszone=ImageAnimation(['images/chaoszone.png'], halign='center',  valign="middle"),
-            #winkekatze=ImageAnimation(['images/winkekatze.png','images/winkekatze2.png'], halign='center',  valign="middle"),
-            bb=Lower3rd('Hallo ballo', color=BLUE[0]),
-            bb2=Lower3rd('Hallo ballo blabla blubberdiblubb'),
-            # t2=TextWithHaufen('Blubb', x=0, y=0),
-            t2=senderlogo,
-            ph=Pixelhaufen(size=100, x=SIZE_X-400, y=40, color=TURQUOISE),
-            sn=SpeakerName(1356,364+280, "speaker1.txt", imgs=['images/cyberwehr_1356_rtl.gif'], margin_y=2, margin_x=49,
-                font=FNT_ORB_40, color=BLACK),
-        )
+                merkel=ImageAnimation(['images/cyber.jpg'], fit_to_screen=True, color=TURQUOISE[1]),
+                ph1=ImageAnimation(['images/pesthoernchen.jpg'], halign='center', color=PURPLE[0]),
+                ph2=ImageAnimation(['images/pesthoernchen.jpg'], halign='right'),
+                ph3=ImageAnimation(['images/pesthoernchen.jpg'], halign='right', valign="bottom", margin=40),
+                ph4=ImageAnimation(['images/pesthoernchen.jpg'], halign='center',  margin=40),
+                chaoszone=ImageAnimation(['images/chaoszone.png'], halign='center',  valign="middle"),
+                #winkekatze=ImageAnimation(['images/winkekatze.png','images/winkekatze2.png'], halign='center',  valign="middle"),
+                bb=Lower3rd('Hallo ballo', color=BLUE[0]),
+                bb2=Lower3rd('Hallo ballo blabla blubberdiblubb'),
+                # t2=TextWithHaufen('Blubb', x=0, y=0),
+                t2=senderlogo,
+                ph=Pixelhaufen(size=100, x=SIZE_X-400, y=40, color=TURQUOISE),
+                sn=SpeakerName(1356,364+280, "speaker1.txt", imgs=['images/cyberwehr_1356_rtl.gif'], margin_y=2, margin_x=49,
+                    font=FNT_ORB_40, color=BLACK),
+                )
 
         # registry for sprites which can be instanciated and invoked/deactivated via rest api
         web_registry = dict(
-            speakername=dict(
-                klass=SpeakerName,
-                params={
-                    'pos_x': 'int',
-                    'pos_y': 'int',
-                    'text': 'str'},
-            ),
-            talktitle=dict(
-                klass=TalkTitle,
-                params={
-                    'title': 'str'},
-            ),
-        )
+                speakername=dict(
+                    klass=SpeakerName,
+                    params={
+                        'pos_x': 'int',
+                        'pos_y': 'int',
+                        'text': 'str'},
+                    ),
+                talktitle=dict(
+                    klass=TalkTitle,
+                    params={
+                        'title': 'str'},
+                    ),
+                )
 
         keys = {
-            K_a: 'merkel',
-            K_s: 'ph1',
-            K_d: 'ph2',
-            K_f: 'ph3',
-            K_r: 'bb',
-            K_t: 'bb2',
-            #K_w: 'winkekatze',
-            K_c: 'chaoszone',
-            K_b: 't2',
-            K_p: 'ph',
-            K_v: 'sn',
-        }
+                K_a: 'merkel',
+                K_s: 'ph1',
+                K_d: 'ph2',
+                K_f: 'ph3',
+                K_r: 'bb',
+                K_t: 'bb2',
+                #K_w: 'winkekatze',
+                K_c: 'chaoszone',
+                K_b: 't2',
+                K_p: 'ph',
+                K_v: 'sn',
+                }
 
         midi = {
                 28: 't2',
                 24: 'bb',
-        }
+                }
         name_midi = {
                 't2': 28,
                 'bb': 24,
-        }
+                }
         midi_multi = {
                 31: 'cw',
-        }
+                }
 
         multi_registry = dict(
-            #gif=(FlyingAnimation, (['images/herz.gif'],), dict(ani_speed=1, fly_speed=3, scale=0.6, color=THEME1[0])),
-            #grrr=(FlyingAnimation, (['images/angry.gif'],), dict(effect=False, ani_speed=5, fly_speed=2, scale=1.2)),
-            #img=(FlyingAnimation, (['images/chaoszone_logo.gif'],), dict(effect=False, ani_speed=2, fly_speed=2, scale=1)),
-            #cw=(SlidingAnimation, (['images/cyberwehr.gif'],), dict(effect=False, ani_speed=4, fly_speed=2, scale=1)),
-        )
+                #gif=(FlyingAnimation, (['images/herz.gif'],), dict(ani_speed=1, fly_speed=3, scale=0.6, color=THEME1[0])),
+                #grrr=(FlyingAnimation, (['images/angry.gif'],), dict(effect=False, ani_speed=5, fly_speed=2, scale=1.2)),
+                #img=(FlyingAnimation, (['images/chaoszone_logo.gif'],), dict(effect=False, ani_speed=2, fly_speed=2, scale=1)),
+                #cw=(SlidingAnimation, (['images/cyberwehr.gif'],), dict(effect=False, ani_speed=4, fly_speed=2, scale=1)),
+                )
 
         multi_keys = {
-            #K_g: 'gif',
-            #K_h: 'grrr',
-            #K_j: 'img',
-            #K_k: 'cw',
-        }
+                #K_g: 'gif',
+                #K_h: 'grrr',
+                #K_j: 'img',
+                #K_k: 'cw',
+                }
 
         multi_cache = dict(gif=[], grrr=[], img=[], cw=[])
         multi_running = dict(gif=[], grrr=[], img=[], cw=[])
@@ -682,6 +682,7 @@ class TGen(object):
                 multi_cache[name].append(klass(*args, **kw))
 
         while True:
+            websocketspriteid=0
             for event in pygame.event.get():
                 if event.type == QUIT:
                     self.quit()
@@ -695,6 +696,13 @@ class TGen(object):
                             y = source['y']
                             w = source['cx']
                             h = source['cy']
+                            print(source['name'])
+                            sn=SpeakerName(x,y+h, "speaker1.txt", imgs=['images/cyberwehr_1356_rtl.gif'], margin_y=2, margin_x=49,
+                                font=FNT_ORB_40, color=BLACK)
+                            registry[str(websocketspriteid)] = sn
+                            keys[str(websocketspriteid)] = K_1
+                            name_single = str(websocketspriteid)
+
                     elif event.type == pygame.midi.MIDIIN:
                         if event.status == 144:
                             #note on
